@@ -22,7 +22,7 @@ images:
   - location: "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-arm64.img"
     arch: "aarch64"
 
-# Disable mounts and containerd, otherwise booting up may timeout if the host is slow
+# Disable mounts and containerd, otherwise booting up may time out if the host is slow
 mounts: []
 containerd:
   system: false
@@ -61,9 +61,6 @@ $ lima nerdctl push --all-platforms example.com/foo:latest
 See also https://github.com/containerd/nerdctl/blob/master/docs/multi-platform.md
 
 ## [Fast mode 2 (Rosetta): Intel containers on ARM VM on ARM Host](#fast-mode-2)
-
-> **Warning**
-> "vz" mode, including support for Rosetta, is experimental (will graduate from experimental in Lima v1.0)
 
 | ⚡ Requirement | Lima >= 0.14, macOS >= 13.0, ARM |
 |-------------------|----------------------------------|
