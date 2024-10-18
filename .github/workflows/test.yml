@@ -17,6 +17,8 @@ on:
 env:
   LIMACTL_CREATE_ARGS: ""
 
+permissions: read-all
+
 jobs:
   lints:
     name: "Lints"
@@ -64,6 +66,20 @@ jobs:
     - name: Check licenses
       # the allow list corresponds to https://github.com/cncf/foundation/blob/e5db022a0009f4db52b89d9875640cf3137153fe/allowed-third-party-license-policy.md
       run: go-licenses check --include_tests  ./... --allowed_licenses=Apache-2.0,BSD-2-Clause,BSD-2-Clause-FreeBSD,BSD-3-Clause,MIT,ISC,Python-2.0,PostgreSQL,X11,Zlib
+
+  spell:
+    name: "Spell check"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+    - uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871  # v4.2.1
+      with:
+        fetch-depth: 1
+    - uses: codespell-project/actions-codespell@406322ec52dd7b488e48c1c4b82e2a8b3a1bf630  # v2.1
+      with:
+        check_filenames: true
+        check_hidden: true
+        # by default, codespell uses configuration from the .codespellrc
 
   unit:
     name: "Unit tests"
@@ -217,18 +233,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Most templates use 9p as the mount type
         template:
         - alpine.yaml
-        - debian.yaml
+        - debian.yaml  # reverse-sshfs
         - fedora.yaml
         # cloud-init 24.3.1-1 package has a regression: https://github.com/lima-vm/lima/issues/2714
         # - archlinux.yaml
         - opensuse.yaml
-        - experimental/net-user-v2.yaml
-        - experimental/9p.yaml
         - docker.yaml
         - ../hack/test-templates/alpine-iso-9p-writable.yaml  # Covers alpine-iso.yaml
-        - ../hack/test-templates/test-misc.yaml
+        - ../hack/test-templates/net-user-v2.yaml
+        - ../hack/test-templates/test-misc.yaml  # TODO: merge net-user-v2 into test-misc
     steps:
     - uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871  # v4.2.1
       with:
@@ -345,13 +361,15 @@ jobs:
       run: make
     - name: Install
       run: make install
+    - name: "Adjust LIMACTL_CREATE_ARGS"
+      run: echo "LIMACTL_CREATE_ARGS=${LIMACTL_CREATE_ARGS} --network=lima:shared" >>$GITHUB_ENV
     - name: "Inject `no_timer_check` to kernel cmdline"
       # workaround to https://github.com/lima-vm/lima/issues/84
-      run: ./hack/inject-cmdline-to-template.sh templates/vmnet.yaml no_timer_check
-    - name: Cache image used by vmnet.yaml
+      run: ./hack/inject-cmdline-to-template.sh templates/default.yaml no_timer_check
+    - name: Cache image used by default .yaml
       uses: ./.github/actions/setup_cache_for_template
       with:
-        template: templates/vmnet.yaml
+        template: templates/default.yaml
     - name: Install test dependencies
       run: brew install qemu bash coreutils iperf3
     - name: Install socket_vmnet
@@ -376,7 +394,7 @@ jobs:
         timeout_minutes: 30
         retry_on: error
         max_attempts: 3
-        command: ./hack/test-templates.sh templates/vmnet.yaml
+        command: ./hack/test-templates.sh templates/default.yaml
     - if: always()
       uses: ./.github/actions/upload_failure_logs_if_exists
 
